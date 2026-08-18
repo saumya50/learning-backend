@@ -1,73 +1,84 @@
 import { asyncHandler } from "../utils/asynHandler.js";
-import {ApiError} from "../utils/APIerror.js";
-import {ApiResponse} from "../utils/ApiResponse.js";
-import {User} from "../models/user.js";
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import { ApiError } from "../utils/APIerror.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { User } from "../models/user.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const registerUser = asyncHandler(async (req, res) => {
+  
 
-    
-     // get user details from frontend
-    const { fullname, email, username, password } = req.body;
-    console.log("fullname:", fullname);
-    console.log("email:", email); 
+    const fullname = req.body?.fullname || req.body?.fullName;
+    const email = req.body?.email;
+    const username = req.body?.username;
+    const password = req.body?.password;
 
+    console.log("Extracted fields:", { fullname, email, username, password });
 
-    // validation - not empty
-    if(
-        [fullname, email, username, password].some((field)=>field?.trim()==="")
-    ){
-         throw new ApiError(400,"all fields are required")
+    // Validation 1: Check text fields
+    if (!fullname || !email || !username || !password || 
+        fullname.trim() === "" || email.trim() === "" || username.trim() === "" || password.trim() === "") {
+        console.log("❌ FAILED VALIDATION: One or more text fields are missing/empty");
+        throw new ApiError(400, "All fields (fullname, email, username, password) are required");
     }
 
-     // check if user already exists: username, email
-    const existedUser=User.findOne({
-        $or:[{username} , {email}]
-    })
-    if(existedUser){
-         throw new ApiError(409,"already exists")
+    // Check user existence
+    const existedUser = await User.findOne({
+        $or: [{ username }, { email }],
+    });
+
+    if (existedUser) {
+        console.log("❌ FAILED VALIDATION: User already exists in DB");
+        throw new ApiError(409, "User with email or username already exists");
     }
 
+    // Validation 2: Check avatar file
+    const avatarLocalPath = req.files?.avatar?.[0]?.path;
+    const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
-     // check for images, check for avatar
-    const avatarLocalPath=req.files?.avatar[0]?.path 
-    const coverImageLocalPath=req.files?.coverImage[0]?.path 
-    
-    if(!avatarLocalPath) throw new ApiError(400,"avatar file is required")
+    console.log("avatarLocalPath:", avatarLocalPath);
+    console.log("coverImageLocalPath:", coverImageLocalPath);
 
+    if (!avatarLocalPath) {
+        console.log("❌ FAILED VALIDATION: Avatar file is missing from req.files");
+        throw new ApiError(400, "Avatar file is required");
+    }
 
-    // upload them to cloudinary, avatar
-    const avatar=await uploadOnCloudinary(avatarLocalPath)
-    const coverImage=await uploadOnCloudinary(coverImageLocalPath)
+    // Upload to Cloudinary
+    console.log("Uploading avatar to Cloudinary...");
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    let coverImage = null;
 
-    if(!avatar) throw new ApiError(400,"avatar file is required")
+    if (coverImageLocalPath) {
+        console.log("Uploading cover image to Cloudinary...");
+        coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    }
 
+    if (!avatar) {
+        console.log("❌ FAILED VALIDATION: Cloudinary avatar upload returned null");
+        throw new ApiError(400, "Avatar file upload failed on Cloudinary");
+    }
 
-    // create user object - create entry in db
-    const user=await User.create({
+    console.log("Avatar uploaded successfully:", avatar.url);
+
+    // Create User in DB
+    const user = await User.create({
         fullname,
-        avatar:avatar.url,
-        coverImage:coverImage?.url || "",
+        avatar: avatar.url,
+        coverImage: coverImage?.url || "",
         email,
         password,
-        username:username.toLowerCase()
-    })
+        username: username.toLowerCase(),
+    });
 
+    const createdUser = await User.findById(user._id).select("-password -refreshToken");
 
-      // remove password and refresh token field from response
-     const createdUser=await User.findById(user._id).select(
-        "-password -refreshToken"
-     )
+    if (!createdUser) {
+        throw new ApiError(500, "Something went wrong while creating user");
+    }
 
-       
-       // check for user creation
-       if(!createdUser) throw new ApiError(500,"something went wrong while creating user")
+    console.log("✅ USER REGISTERED SUCCESSFULLY!");
 
-        // return res
-        return res.status(201).json(
-            new ApiResponse(200,createdUser,"user register success")
-        )
+    return res.status(201).json(new ApiResponse(200, createdUser, "User registered successfully"));
+});
 
-})
-
-export { registerUser }; 
+export { registerUser };
