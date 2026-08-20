@@ -4,8 +4,26 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
+// this is a method to generate access and refresh tokens
+const generateAccessAndRefereshTokens = async (userId) => {
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken /* added refresh token in user object */
+
+        await user.save({ validateBeforeSave: false }) /* since adding info in user requires validation(password) so to avoid it used this*/
+
+        return { accessToken, refreshToken }
+
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while generating referesh and access token")
+    }
+}
+
 const registerUser = asyncHandler(async (req, res) => {
-  
+
 
     const fullname = req.body?.fullname || req.body?.fullName;
     const email = req.body?.email;
@@ -15,7 +33,7 @@ const registerUser = asyncHandler(async (req, res) => {
     console.log("Extracted fields:", { fullname, email, username, password });
 
     // Validation 1: Check text fields
-    if (!fullname || !email || !username || !password || 
+    if (!fullname || !email || !username || !password ||
         fullname.trim() === "" || email.trim() === "" || username.trim() === "" || password.trim() === "") {
         console.log("❌ FAILED VALIDATION: One or more text fields are missing/empty");
         throw new ApiError(400, "All fields (fullname, email, username, password) are required");
@@ -81,4 +99,83 @@ const registerUser = asyncHandler(async (req, res) => {
     return res.status(201).json(new ApiResponse(200, createdUser, "User registered successfully"));
 });
 
-export { registerUser };
+const loginUser = asyncHandler(async (req, res) => {
+    // req body -> data
+    // username or email
+    //find the user
+    //password check
+
+    //send cookie
+
+    const { password, email, username } = req.body
+
+    if (!username && !email) {
+        throw new ApiError(400, "username or email is required")
+    }
+
+    const user = User.findOne({
+        $or: [{ username }, { email }]
+    })
+
+    if (!user) {
+        throw new ApiError(404, "user does not exist")
+    }
+
+    const isPassValid = await user.isPasswordCorrect(password)
+
+    if (!isPassValid) {
+        throw new ApiError(401, "invalid user credentials")
+    }
+
+    // generate and store accessToken and refreshToken
+    const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(user._id)
+
+    const loggedInUser = await User.findOne(user._id).select("-password -refreshToken")
+
+    // sending cookies
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(200, {
+                user: loggedInUser, accessToken, refreshToken
+            }, "user logged in")
+        )
+
+})
+
+const logoutUser = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            /* set is an mongoDB operator which give functionality to update objects  */
+            $set: {
+                refreshToken: undefined
+            }
+        },
+        {
+            new:true
+        }
+    )
+      const options = {
+        httpOnly: true,
+        secure: true
+    }
+    return res.status(200)
+    .clearcookie("accessToken",options)
+    .clearcookie("refreshToken",options)
+    .json(new ApiResponse(200,{},"User logged out"))
+})
+
+
+export {
+    registerUser,
+    loginUser,
+    logoutUser
+}
