@@ -305,129 +305,133 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     ).select("-password")
 
     return res
-    .status(200)
+        .status(200)
     .json(new ApiResponse(200,user,"Account details updated successfully"))
 
 });
 
 
-const updateUserAvatar=asyncHandler(async(req,res)=>{
-      const avatarLocalPath=req.file?.path
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    const avatarLocalPath = req.file?.path
 
-      if(!avatarLocalPath){
-        throw new ApiError(400,"Avatar file is missing")
-      }
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is missing")
+    }
 
-      const avatar=await uploadOnCloudinary(avatarLocalPath)
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
 
-      if(!avatar.url){
-        throw new ApiError(400,"Error while uploading on avatar")
-      }
+    if (!avatar.url) {
+        throw new ApiError(400, "Error while uploading on avatar")
+    }
 
-      const user=await User.findByIdAndUpdate(req.user?._id,
-        {$set:{
-            avatar:avatar.url
-        }},
-        {new:true}
-      ).select("-password")
+    const user = await User.findByIdAndUpdate(req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url
+            }
+        },
+        { new: true }
+    ).select("-password")
 
-       return res.status(200)
-      .json(new ApiResponse(200,user,"AvatarImage updated"))
+    return res.status(200)
+        .json(new ApiResponse(200, user, "AvatarImage updated"))
 });
 
 
-const updateUserCoverImage=asyncHandler(async(req,res)=>{
-      const CoverImageLocalPath=req.file?.path
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    const CoverImageLocalPath = req.file?.path
 
-      if(!CoverImageLocalPath){
-        throw new ApiError(400,"Coverimage file is missing")
-      }
+    if (!CoverImageLocalPath) {
+        throw new ApiError(400, "Coverimage file is missing")
+    }
 
-      const CoverImage=await uploadOnCloudinary(CoverImageLocalPath)
+    const CoverImage = await uploadOnCloudinary(CoverImageLocalPath)
 
-      if(!CoverImage.url){
-        throw new ApiError(400,"Error while uploading on avatar")
-      }
+    if (!CoverImage.url) {
+        throw new ApiError(400, "Error while uploading on avatar")
+    }
 
-     const user= await User.findByIdAndUpdate(req.user?._id,
-        {$set:{
-            coverImage:CoverImage.url
-        }},
-        {new:true}
-      ).select("-password")
+    const user = await User.findByIdAndUpdate(req.user?._id,
+        {
+            $set: {
+                coverImage: CoverImage.url
+            }
+        },
+        { new: true }
+    ).select("-password")
 
-      return res.status(200)
-      .json(new ApiResponse(200,user,"CoverImage updated"))
+    return res.status(200)
+        .json(new ApiResponse(200, user, "CoverImage updated"))
 });
 
 
-const getUserChannelProfile=asyncHandler(async(req,res)=>{
+const getUserChannelProfile = asyncHandler(async (req, res) => {
 
-     const {username}=req.params
+    const { username } = req.params
 
-     if(!username?.trim() ){
-        throw new ApiError(400,"username is missing")
-     }
+    if (!username?.trim()) {
+        throw new ApiError(400, "username is missing")
+    }
     const channel = await User.aggregate([
         {
-            $match:{
-                username:username?.toLowerCase()
+            $match: {
+                username: username?.toLowerCase()
             }
         },
         {
-            $lookup:{
-                from:"subscriptions",
-                localField:"_id",
-                foreignField:"channel",
-                as:"subscribers"
+            $lookup: {
+                from: "subscriptions",       // Target collection to search in
+                localField: "_id",            // Channel Owner's _id (from User model)
+                foreignField: "channel",      // 'channel' field in Subscription model
+                as: "subscribers"            // Store matches in an array called 'subscribers'
             }
         },
         {
-            $lookup:{
-                from:"subscriptions",
-                localField:"_id",
-                foreignField:"subsriber",
-                as:"subscribedTo"
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
             }
         },
         {
-            $addFields:{
-                subscribersCount:{
-                   $size:"$subscribers" 
+            $addFields: {
+                subscribersCount: {
+                    $size: "$subscribers"
                 },
-                channelsSubscribedTo:{
-                    $size:"$subscribedTo"
+                channelsSubscribedTo: {
+                    $size: "$subscribedTo"
                 },
-                isSubscribed:{
-                    $cond:{
-                        if:{$in: [req.user?._id, "subscribers.subscriber"]},
-                        then:true,
-                        else:false
+                isSubscribed: {
+                    $cond: {
+                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                        then: true,
+                        else: false
                     }
                 }
             }
         },
         {
-            $project:{
-                fullName:1,
-                email:1,
-                username:1,
-                subscribersCount:1,
-                channelsSubscribedTo:1,
-                avatar:1,
-                coverImage:1,
-                isSubscribed:1
+            $project: {
+                fullName: 1,
+                email: 1,
+                username: 1,
+                subscribersCount: 1,
+                channelsSubscribedTo: 1,
+                avatar: 1,
+                coverImage: 1,
+                isSubscribed: 1
             }
         }
     ])
 
     /* aggregate return array of objects : so here we are searching for a channel so the array will have only one object so if channel exists length will be 1 otherwise 0 */
-    if(!channel?.length){
-        throw new ApiError(404,"channel does not exists")
+    if (!channel?.length) {
+        throw new ApiError(404, "channel does not exists")
     }
     return res
-    .status(200)
-    .json(new ApiResponse(200,channel[0],"User channel fetched"))
+        .status(200)
+        .json(new ApiResponse(200, channel[0], "User channel fetched"))
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getCurrentUser, changePassword,updateAccountDetails,updateUserAvatar,updateUserCoverImage,getUserChannelProfile };
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getUserChannelProfile };
