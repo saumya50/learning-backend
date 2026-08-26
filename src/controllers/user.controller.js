@@ -430,4 +430,4 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
     .json(new ApiResponse(200,channel[0],"User channel fetched"))
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getCurrentUser, changePassword,updateAccountDetails,updateUserAvatar,updateUserCoverImage };
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getCurrentUser, changePassword,updateAccountDetails,updateUserAvatar,updateUserCoverImage,getUserChannelProfile };
