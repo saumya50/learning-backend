@@ -192,8 +192,8 @@ const logoutUser = asyncHandler(async (req, res) => {
         req.user._id,
         {
             /* set is an mongoDB operator which give functionality to update objects  */
-            $set: {
-                refreshToken: undefined,
+            $unset: {
+                refreshToken: 1,
             },
         },
         {
