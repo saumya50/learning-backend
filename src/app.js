@@ -18,6 +18,7 @@ app.use(cookieParser());
 
 import userRouter from "./routes/user.routes.js";
 import commentRouter from "./routes/comments.routes.js";
+import likesRouter from "./routes/likes.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
