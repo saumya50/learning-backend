@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/asynHandler.js";
-import { ApiError } from "../utils/APIerror.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
@@ -445,39 +445,39 @@ const getWatchHistory = asyncHandler(async (req, res) => {
         },
 
         {
-            $lookup:{
-                from:"videos",
-                localField:"watchHistory",
-                foreignField:"_id",
-                as:"watchHistory",
-                pipeline:[
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
                     {
-                        $lookup:{
-                           from:"users",
-                           localField:"owner",
-                           foreignField:"_id",
-                           as:"owner",
-                           pipeline:[
-                            {
-                                $project:{
-                                    username:1,
-                                    fullName:1,
-                                    avatar:1
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        username: 1,
+                                        fullName: 1,
+                                        avatar: 1
+                                    }
                                 }
-                            }
-                           ]
+                            ]
                         }
                     }
                 ]
-            } 
+            }
         }
 
     ])
-    
+
     return res
-    .status(200)
-    .json(new ApiResponse(200,user[0].watchHistory,"watchHistory fetched"))
+        .status(200)
+        .json(new ApiResponse(200, user[0].watchHistory, "watchHistory fetched"))
 
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getUserChannelProfile,getWatchHistory };
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getUserChannelProfile, getWatchHistory };

@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/asynHandler.js";
-import { ApiError } from "../utils/APIerror.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Comment } from "../models/comment.js";
 import mongoose from "mongoose";
@@ -121,4 +121,4 @@ const deleteComment = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, { deletedComment: check }, "Comment deleted successfully"));
 });
 
-export { getVideoComments, addComment, updateComment,deleteComment };
+export { getVideoComments, addComment, updateComment, deleteComment };
